@@ -9,6 +9,8 @@ import org.ecommerce.kafka.OrderConfirmation;
 import org.ecommerce.kafka.OrderProducer;
 import org.ecommerce.orderline.OrderLineRequest;
 import org.ecommerce.orderline.OrderLineService;
+import org.ecommerce.payment.PaymentClient;
+import org.ecommerce.payment.PaymentRequest;
 import org.ecommerce.product.ProductClient;
 import org.ecommerce.product.PurchaseRequest;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,7 @@ public class OrderService {
     private final OrderMapper mapper;
     private final OrderLineService orderLineService;
     private final OrderProducer orderProducer;
+    private final PaymentClient paymentClient;
 
     public Integer createOrder(@Valid OrderRequest request) {
         var customer = this.customerClient.findCustomerById(request.customerId())
@@ -46,6 +49,15 @@ public class OrderService {
             );
 
         }
+
+        var paymentRequest = new PaymentRequest(
+                request.amount(),
+                request.paymentMethod(),
+                order.getId(),
+                order.getReference(),
+                customer
+        );
+        paymentClient.requestOrderPayment(paymentRequest);
 
         orderProducer.sendOrderConfirmation(
                 new OrderConfirmation(
